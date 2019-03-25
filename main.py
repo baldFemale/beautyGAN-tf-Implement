@@ -215,49 +215,51 @@ class BeautyGAN():
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        histogram_loss_r_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 0] + 1) * 127.5, dtype=tf.float32),
-                                                       tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
-                                                               dtype=tf.float32), self.input_A_mask[1],
-                                                       self.input_B_mask[1])
+        # histogram_loss_r_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 0] + 1) * 127.5, dtype=tf.float32),
+        #                                                tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
+        #                                                        dtype=tf.float32), self.input_A_mask[1],
+        #                                                self.input_B_mask[1])
+
+
 
         histogram_loss_r_face = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 0] + 1) * 127.5, dtype=tf.float32),
                                                        tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
                                                                dtype=tf.float32), self.input_A_mask[2],
                                                        self.input_B_mask[2])
-        histogram_loss_r = histogram_loss_r_eye+histogram_loss_r_face+histogram_loss_r_lip
+        histogram_loss_r = histogram_loss_r_face+histogram_loss_r_lip
 
         histogram_loss_g_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        histogram_loss_g_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
-                                                   tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
-                                                           dtype=tf.float32),self.input_A_mask[1],
-                                                       self.input_B_mask[1])
+        # histogram_loss_g_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
+        #                                            tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
+        #                                                    dtype=tf.float32),self.input_A_mask[1],
+        #                                                self.input_B_mask[1])
 
         histogram_loss_g_face = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[2],
                                                        self.input_B_mask[2])
-        histogram_loss_g = histogram_loss_g_eye+histogram_loss_g_lip+histogram_loss_g_face
+        histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_face
 
         histogram_loss_b_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        histogram_loss_b_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
-                                                   tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
-                                                           dtype=tf.float32),self.input_A_mask[1],
-                                                       self.input_B_mask[1])
+        # histogram_loss_b_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
+        #                                            tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
+        #                                                    dtype=tf.float32),self.input_A_mask[1],
+        #                                                self.input_B_mask[1])
 
         histogram_loss_b_face = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[2],
                                                        self.input_B_mask[2])
 
-        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_eye+histogram_loss_b_face
+        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_face
 
         makeup_loss = histogram_loss_r+histogram_loss_g+histogram_loss_b
 
