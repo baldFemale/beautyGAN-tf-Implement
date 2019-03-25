@@ -14,15 +14,15 @@ def build_generator(input_A,input_B,name="generator"):
         input_pad_B = tf.pad(input_B,[[0,0],[3,3],[3,3],[0,0]],"REFLECT")
 
         A_c1 = generate_conv2d(inputconv=input_pad_A,o_d=ngf,kernal_size=fs,stride=1,padding="VALID",
-                               name="A_c1",stddev=0.02)
+                               name="A_c1",stddev=0.02)  # 1*256*256*32
         B_c1 = generate_conv2d(inputconv=input_pad_B,o_d=ngf,kernal_size=fs,stride=1,padding="VALID",
-                               name="B_c1",stddev=0.02)
+                               name="B_c1",stddev=0.02)  # 1*256*256*32
         A_c2 = generate_conv2d(inputconv=A_c1,o_d=ngf*2,kernal_size=ks,stride=2,padding="SAME",
-                               name="A_c2",stddev=0.02)
+                               name="A_c2",stddev=0.02)  # 1*128*128*64
         B_c2 = generate_conv2d(inputconv=B_c1,o_d=ngf*2,kernal_size=ks,stride=2,padding="SAME",
-                               name="B_c2",stddev=0.02)
+                               name="B_c2",stddev=0.02)  # 1*128*128*64
         A_c3 = generate_conv2d(inputconv=A_c2,o_d=ngf*4,kernal_size=ks,stride=2,padding="SAME",
-                               name="A_c3",stddev=0.02)
+                               name="A_c3",stddev=0.02)  # 1*64*64*128
         B_c3 = generate_conv2d(inputconv=B_c2,o_d=ngf*4,kernal_size=ks,stride=2,padding="SAME",
                                name="B_c3",stddev=0.02) #1*64*64*128
 
@@ -38,7 +38,7 @@ def build_generator(input_A,input_B,name="generator"):
         o_r9 = generate_resblock(o_r8,dim=ngf*8,name="r9")
 
         o_r9_A = tf.slice(o_r9,[0,0,0,0],[1,64,64,128])
-        o_r9_B = tf.slice(o_r9,[0,0,0,128],[1,64,64,256])
+        o_r9_B = tf.slice(o_r9,[0,0,0,128],[1,64,64,128])
 
         A_c4 = generate_deconv2d(inputdeconv=o_r9_A,o_d=ngf*2,kernal_size=ks,stride=2,padding="SAME",
                                  name="A_c4",stddev=0.02)
