@@ -3,3 +3,9 @@
 * Based on [cycleGAN tf Implement](https://github.com/hardikbansal/CycleGAN)
 * [Baidu Drive for vgg16.npy](https://pan.baidu.com/s/1D4Zoaunwo2rZTNW7HhZjPA): 83dt
 * face parsing tools: [dlib'68 landmarks model](http://dlib.net/files/)
+* remaining questions:
+  * histogram mathc on shadow instead of eyes
+  * channel
+  * scope reuse
+  * optimize process
+  * deconv padding
