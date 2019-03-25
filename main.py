@@ -29,6 +29,11 @@ check_dir = "./output/checkpoints/"
 class BeautyGAN():
 
     def input_setup(self):
+        """
+        dataset_A:non-makeup
+        dataset_B:makeup
+        :return:
+        """
         filename_A = tf.train.match_filenames_once("./all/images/non-makeup/*.png")
         self.queue_length_A = tf.size(filename_A)
         filename_B = tf.train.match_filenames_once("./all/images/makeup/*.png")
