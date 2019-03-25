@@ -1,6 +1,5 @@
 import tensorflow as tf
 import dlib
-import dlib
 import cv2
 import numpy as np
 from scipy.misc import imsave
@@ -13,7 +12,7 @@ import utils
 
 
 batch_size = 1
-max_images = 100
+max_images = 1050
 pool_size = 50
 
 img_height = 256
@@ -22,17 +21,17 @@ img_layer = 3
 
 to_restore = False
 save_training_images = False
-to_train = True
-to_test = False
+to_train = False
+to_test = True
 out_path = "./output"
 check_dir = "./output/checkpoints/"
 
 class BeautyGAN():
 
     def input_setup(self):
-        filename_A = tf.train.match_filenames_once("./japanese for beautyGAN/*.jpg")
+        filename_A = tf.train.match_filenames_once("./all/images/non-makeup/*.png")
         self.queue_length_A = tf.size(filename_A)
-        filename_B = tf.train.match_filenames_once("./smokey for beautyGAN/*.jpg")
+        filename_B = tf.train.match_filenames_once("./all/images/makeup/*.png")
         self.queue_length_B = tf.size(filename_B)
 
         filename_A_queue = tf.train.string_input_producer(filename_A)
@@ -199,8 +198,10 @@ class BeautyGAN():
         s_bin_index = tf.clip_by_value(s_bin_index, 0, 254)
 
         matched_to_t = tf.gather(hist_range, tf.gather(nearest_indices, s_bin_index))
-        matched_to_t = tf.divide(matched_to_t,tf.reduce_mean(matched_to_t))
-        source = tf.divide(source,tf.reduce_mean(source))
+        # Using the same normalization as Gatys' style transfer: A huge variation--the normalization scalar is different according to different image
+        # normalization includes variation constraints may be better
+        matched_to_t = tf.subtract(tf.div(matched_to_t,127.5),1)
+        source = tf.subtract(tf.divide(source,127.5),1)
         return tf.reduce_mean(tf.squared_difference(matched_to_t,source))
 
 
@@ -260,9 +261,12 @@ class BeautyGAN():
 
         makeup_loss = histogram_loss_r+histogram_loss_g+histogram_loss_b
 
+        # Using the same normalization as Gatys' neural style transfer
+        # Increase the lambda from 0.005 to 0.05
+        # cycle loss:2
         perceptual_loss = tf.reduce_mean(tf.squared_difference(self.perc[0],self.perc[2]))+tf.reduce_mean(tf.squared_difference(self.perc[1],self.perc[3]))
 
-        g_loss = cyc_loss*10+disc_loss_B+disc_loss_A+perceptual_loss*0.005+makeup_loss
+        g_loss = cyc_loss*10+disc_loss_B+disc_loss_A+perceptual_loss*0.05+makeup_loss
 
         d_loss_A = (tf.reduce_mean(tf.square(self.fake_pool_rec_A))+tf.reduce_mean(tf.squared_difference(self.rec_A,1)))/2.0
         d_loss_B = (tf.reduce_mean(tf.square(self.fake_pool_rec_B)) + tf.reduce_mean(
@@ -351,14 +355,14 @@ class BeautyGAN():
             if not os.path.exists(check_dir):
                 os.makedirs(check_dir)
 
-            for epoch in range(sess.run(self.global_step),100):
+            for epoch in range(sess.run(self.global_step),300):
                 print("in the epoch ",epoch)
-                # saver.save(sess,os.path.join(check_dir,"beautyGAN"),global_step=epoch)
+                saver.save(sess,os.path.join(check_dir,"beautyGAN"),global_step=epoch)
 
                 if epoch<100:
                     curr_lr = 0.0002
                 else:
-                    curr_lr = 0.0002-0.0002*(epoch-100)/100
+                    curr_lr = 0.0002-0.0002*(epoch-100)/200
 
                 if save_training_images:
                     self.save_training_images(sess,epoch)
@@ -421,9 +425,11 @@ class BeautyGAN():
                     self.input_A:self.A_input[i],
                     self.input_B:self.B_input[i]
                 })
-                imsave("./output/imgs/fakeA_" + str(i) + ".jpg",
+                imsave("./output/imgs/test/A_" + str(i) + ".jpg",((self.A_input[i][0]+1)*127.5).astype(np.uint8))
+                imsave("./output/imgs/test/B_" + str(i) + ".jpg",((self.B_input[i][0]+1)*127.5).astype(np.uint8))
+                imsave("./output/imgs/test/fakeA_" + str(i) + ".jpg",
                        ((fake_A_temp[0] + 1) * 127.5).astype(np.uint8))
-                imsave("./output/imgs/fakeB_" + str(i) + ".jpg",
+                imsave("./output/imgs/test/fakeB_" + str(i) + ".jpg",
                        ((fake_B_temp[0] + 1) * 127.5).astype(np.uint8))
 
 def main():

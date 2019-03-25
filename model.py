@@ -30,12 +30,16 @@ def build_generator(input_A,input_B,name="generator"):
         o_r4 = generate_resblock(o_r3,dim=512,name="r4")
         o_r5 = generate_resblock(o_r4,dim=512,name="r5")
         o_r6 = generate_resblock(o_r5,dim=512,name="r6")
-        o_r6_A = tf.slice(o_r6,[0,0,0,0],[1,64,64,256])
-        o_r6_B = tf.slice(o_r6,[0,0,0,256],[1,64,64,256])
+        o_r7 = generate_resblock(o_r6,dim=512,name="r7")
+        o_r8 = generate_resblock(o_r7,dim=512,name="r8")
+        o_r9 = generate_resblock(o_r8,dim=512,name="r9")
 
-        A_c4 = generate_deconv2d(inputdeconv=o_r6_A,o_d=128,kernal_size=ks,stride=2,padding="SAME",
+        o_r9_A = tf.slice(o_r9,[0,0,0,0],[1,64,64,256])
+        o_r9_B = tf.slice(o_r9,[0,0,0,256],[1,64,64,256])
+
+        A_c4 = generate_deconv2d(inputdeconv=o_r9_A,o_d=128,kernal_size=ks,stride=2,padding="SAME",
                                  name="A_c4",stddev=0.02)
-        B_c4 = generate_deconv2d(inputdeconv=o_r6_B,o_d=128,kernal_size=ks,stride=2,padding="SAME",
+        B_c4 = generate_deconv2d(inputdeconv=o_r9_B,o_d=128,kernal_size=ks,stride=2,padding="SAME",
                                  name="B_c4",stddev=0.02)
         A_c5 = generate_deconv2d(inputdeconv=A_c4,o_d=64,kernal_size=ks,stride=2,padding="SAME",
                                  name="A_c5",stddev=0.02)
@@ -57,8 +61,8 @@ def generate_discriminator(inputdis,name="discriminator"):
         f = 4
         # 目前的spectral normlization 有点问题
         oc_1 = generate_conv2d(inputdis,64,f,2,"SAME",name="c1",do_norm=False,relufactor=0.2)
-        oc_2 = generate_conv2d(oc_1,128,f,2,"SAME",name="c2",relufactor=0.2)
-        oc_3 = generate_conv2d(oc_2,256,f,2,"SAME",name="c3",relufactor=0.2)
-        oc_4 = generate_conv2d(oc_3,512,f,1,"SAME",name="c4",relufactor=0.2)
+        oc_2 = generate_conv2d(oc_1,128,f,2,"SAME",name="c2",do_norm=False,do_sp_norm=True,relufactor=0.2)
+        oc_3 = generate_conv2d(oc_2,256,f,2,"SAME",name="c3",do_norm=False,do_sp_norm=True,relufactor=0.2)
+        oc_4 = generate_conv2d(oc_3,512,f,1,"SAME",name="c4",do_norm=False,do_sp_norm=True,relufactor=0.2)
         oc_5 = generate_conv2d(oc_4,512,f,1,"SAME",name="c5",do_norm=False,do_sp_norm=False,do_relu=False)
         return oc_5
