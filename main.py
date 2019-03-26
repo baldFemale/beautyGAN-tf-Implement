@@ -49,7 +49,7 @@ class BeautyGAN():
         self.image_B = tf.subtract(tf.div(tf.image.resize_images(tf.image.decode_jpeg(image_file_B),[256,256]),127.5),1)
 
 
-    def get_mask(self,input_face, detector, predictor):
+    def get_mask(self,input_face, detector, predictor,window=5):
         gray = cv2.cvtColor(input_face, cv2.COLOR_BGR2GRAY)
         dets = detector(gray, 1)
 
@@ -60,13 +60,35 @@ class BeautyGAN():
                 temp.append([pt.x, pt.y])
             lip_mask = np.zeros([256, 256])
             eye_mask = np.zeros([256,256])
-            face_mask = np.full((256, 256), 255)
-            cv2.fillPoly(lip_mask, [np.array(temp[48:59]).reshape((-1, 1, 2))], (255, 255, 255))
-            cv2.fillPoly(eye_mask, [np.array(temp[36:41]).reshape((-1, 1, 2))], (255, 255, 255))
-            cv2.fillPoly(eye_mask, [np.array(temp[42:47]).reshape((-1, 1, 2))], (255, 255, 255))
-            cv2.fillPoly(face_mask, [np.array(temp[36:41]).reshape((-1, 1, 2))], (0, 0, 0))
-            cv2.fillPoly(face_mask, [np.array(temp[42:47]).reshape((-1, 1, 2))], (0, 0, 0))
-            cv2.fillPoly(face_mask, [np.array(temp[48:59]).reshape((-1, 1, 2))], (0, 0, 0))
+            face_mask = np.full((256, 256), 255).astype(np.uint8)
+            cv2.fillPoly(lip_mask, [np.array(temp[48:60]).reshape((-1, 1, 2))], (255, 255, 255))
+            cv2.fillPoly(lip_mask, [np.array(temp[60:68]).reshape((-1, 1, 2))], (0, 0, 0))
+
+            left_left = min(x[0] for x in temp[36:42])
+            left_right = max(x[0] for x in temp[36:42])
+            left_bottom = min(x[1] for x in temp[36:42])
+            left_top = max(x[1] for x in temp[36:42])
+            left_rectangle = np.array(
+                [[left_left - window, left_top + window], [left_right + window, left_top + window],
+                 [left_right + window, left_bottom - window], [left_left - window, left_bottom - window]]
+            ).reshape((-1, 1, 2))
+            cv2.fillPoly(eye_mask, [left_rectangle], (255, 255, 255))
+            cv2.fillPoly(eye_mask, [np.array(temp[36:42]).reshape((-1, 1, 2))], (0, 0, 0))
+
+            right_left = min(x[0] for x in temp[42:48])
+            right_right = max(x[0] for x in temp[42:48])
+            right_bottom = min(x[1] for x in temp[42:48])
+            right_top = max(x[1] for x in temp[42:48])
+            right_rectangle = np.array(
+                [[right_left - window, right_top + window], [right_right + window, right_top + window],
+                 [right_right + window, right_bottom - window], [right_left - window, right_bottom - window]]
+            ).reshape((-1, 1, 2))
+            cv2.fillPoly(eye_mask, [right_rectangle], (255, 255, 255))
+            cv2.fillPoly(eye_mask, [np.array(temp[42:47]).reshape((-1, 1, 2))], (0, 0, 0))
+
+            cv2.fillPoly(face_mask, [np.array(temp[36:42]).reshape((-1, 1, 2))], (0, 0, 0))
+            cv2.fillPoly(face_mask, [np.array(temp[42:48]).reshape((-1, 1, 2))], (0, 0, 0))
+            cv2.fillPoly(face_mask, [np.array(temp[48:60]).reshape((-1, 1, 2))], (0, 0, 0))
             return lip_mask,eye_mask,face_mask
 
 
@@ -220,10 +242,10 @@ class BeautyGAN():
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        # histogram_loss_r_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 0] + 1) * 127.5, dtype=tf.float32),
-        #                                                tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
-        #                                                        dtype=tf.float32), self.input_A_mask[1],
-        #                                                self.input_B_mask[1])
+        histogram_loss_r_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 0] + 1) * 127.5, dtype=tf.float32),
+                                                       tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
+                                                               dtype=tf.float32), self.input_A_mask[1],
+                                                       self.input_B_mask[1])
 
 
 
@@ -231,40 +253,40 @@ class BeautyGAN():
                                                        tf.cast((self.input_B[0, :, :, 0] + 1) * 127.5,
                                                                dtype=tf.float32), self.input_A_mask[2],
                                                        self.input_B_mask[2])
-        histogram_loss_r = histogram_loss_r_face+histogram_loss_r_lip
+        histogram_loss_r = histogram_loss_r_face+histogram_loss_r_lip+histogram_loss_r_eye
 
         histogram_loss_g_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        # histogram_loss_g_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
-        #                                            tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
-        #                                                    dtype=tf.float32),self.input_A_mask[1],
-        #                                                self.input_B_mask[1])
+        histogram_loss_g_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
+                                                   tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
+                                                           dtype=tf.float32),self.input_A_mask[1],
+                                                       self.input_B_mask[1])
 
         histogram_loss_g_face = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[2],
                                                        self.input_B_mask[2])
-        histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_face
+        histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_face+histogram_loss_g_eye
 
         histogram_loss_b_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
                                                        self.input_B_mask[0])
 
-        # histogram_loss_b_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
-        #                                            tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
-        #                                                    dtype=tf.float32),self.input_A_mask[1],
-        #                                                self.input_B_mask[1])
+        histogram_loss_b_eye = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
+                                                   tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
+                                                           dtype=tf.float32),self.input_A_mask[1],
+                                                       self.input_B_mask[1])
 
         histogram_loss_b_face = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[2],
                                                        self.input_B_mask[2])
 
-        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_face
+        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_face+histogram_loss_b_eye
 
         makeup_loss = histogram_loss_r+histogram_loss_g+histogram_loss_b
 
