@@ -1,3 +1,7 @@
+import os
+
+os.environ['CUDA_VISIBLE_DEVICES']='0'
+
 import tensorflow as tf
 import dlib
 import cv2
@@ -25,6 +29,7 @@ to_train = True
 to_test = False
 out_path = "./output"
 check_dir = "./output/checkpoints/"
+
 
 class BeautyGAN():
 
@@ -374,65 +379,65 @@ class BeautyGAN():
         saver = tf.train.Saver()
 
         with tf.Session() as sess:
-            with tf.device("/gpu:0"):
-                sess.run(init)
-                self.input_read(sess)
 
-                if to_restore:
-                    chkpt_fname = tf.train.latest_checkpoint(check_dir)
-                    saver.restore(sess,chkpt_fname)
+            sess.run(init)
+            self.input_read(sess)
 
-                writer = tf.summary.FileWriter("./output/2")
+            if to_restore:
+                chkpt_fname = tf.train.latest_checkpoint(check_dir)
+                saver.restore(sess,chkpt_fname)
 
-                if not os.path.exists(check_dir):
-                    os.makedirs(check_dir)
+            writer = tf.summary.FileWriter("./output/2")
 
-                for epoch in range(sess.run(self.global_step),300):
-                    print("in the epoch ",epoch)
-                    saver.save(sess,os.path.join(check_dir,"beautyGAN"),global_step=epoch)
+            if not os.path.exists(check_dir):
+                os.makedirs(check_dir)
 
-                    if epoch<100:
-                        curr_lr = 0.0002
-                    else:
-                        curr_lr = 0.0002-0.0002*(epoch-100)/200
+            for epoch in range(sess.run(self.global_step),900):
+                print("in the epoch ",epoch)
+                saver.save(sess,os.path.join(check_dir,"beautyGAN"),global_step=epoch)
 
-                    if save_training_images:
-                        self.save_training_images(sess,epoch)
+                if epoch<100:
+                    curr_lr = 0.0002
+                else:
+                    curr_lr = 0.0002-0.0002*(epoch-100)/800
 
-                    for ptr in range(0,self.train_num):
-                        print("in the iteration",ptr)
-                        print(time.ctime())
-                        _,fake_B_temp,fake_A_temp,summary_str = sess.run([self.g_trainer,self.fake_B,self.fake_A,self.g_summary],feed_dict={
-                            self.input_A:self.A_input[ptr],
-                            self.input_B:self.B_input[ptr],
-                            self.lr:curr_lr,
-                            self.input_A_mask:self.A_input_mask[ptr],
-                            self.input_B_mask:self.B_input_mask[ptr],
-                        })
-                        writer.add_summary(summary_str,epoch*self.train_num+ptr)
+                if save_training_images:
+                    self.save_training_images(sess,epoch)
 
-                        fake_A_temp1 = self.fake_image_pool(self.num_fake_inputs,fake_A_temp,self.fake_images_A)
-                        fake_B_temp1 = self.fake_image_pool(self.num_fake_inputs,fake_B_temp,self.fake_images_B)
+                for ptr in range(0,self.train_num):
+                    print("in the iteration",ptr)
+                    print(time.ctime())
+                    _,fake_B_temp,fake_A_temp,summary_str = sess.run([self.g_trainer,self.fake_B,self.fake_A,self.g_summary],feed_dict={
+                        self.input_A:self.A_input[ptr],
+                        self.input_B:self.B_input[ptr],
+                        self.lr:curr_lr,
+                        self.input_A_mask:self.A_input_mask[ptr],
+                        self.input_B_mask:self.B_input_mask[ptr],
+                    })
+                    writer.add_summary(summary_str,epoch*self.train_num+ptr)
 
-                        _,summary_str = sess.run([self.d_A_trainer,self.d_A_loss_sum],feed_dict={
-                            self.input_A:self.A_input[ptr],
-                            self.input_B:self.B_input[ptr],
-                            self.lr:curr_lr,
-                            self.fake_pool_A:fake_A_temp1
-                        })
-                        writer.add_summary(summary_str,epoch*self.train_num+ptr)
+                    fake_A_temp1 = self.fake_image_pool(self.num_fake_inputs,fake_A_temp,self.fake_images_A)
+                    fake_B_temp1 = self.fake_image_pool(self.num_fake_inputs,fake_B_temp,self.fake_images_B)
 
-                        _,summary_str = sess.run([self.d_B_trainer,self.d_B_loss_sum],feed_dict={
-                            self.input_A: self.A_input[ptr],
-                            self.input_B: self.B_input[ptr],
-                            self.lr: curr_lr,
-                            self.fake_pool_B: fake_B_temp1
-                        })
-                        writer.add_summary(summary_str,epoch*self.train_num+ptr)
+                    _,summary_str = sess.run([self.d_A_trainer,self.d_A_loss_sum],feed_dict={
+                        self.input_A:self.A_input[ptr],
+                        self.input_B:self.B_input[ptr],
+                        self.lr:curr_lr,
+                        self.fake_pool_A:fake_A_temp1
+                    })
+                    writer.add_summary(summary_str,epoch*self.train_num+ptr)
 
-                        self.num_fake_inputs+=1
-                    sess.run(tf.assign(self.global_step,epoch+1))
-                writer.add_graph(sess.graph)
+                    _,summary_str = sess.run([self.d_B_trainer,self.d_B_loss_sum],feed_dict={
+                        self.input_A: self.A_input[ptr],
+                        self.input_B: self.B_input[ptr],
+                        self.lr: curr_lr,
+                        self.fake_pool_B: fake_B_temp1
+                    })
+                    writer.add_summary(summary_str,epoch*self.train_num+ptr)
+
+                    self.num_fake_inputs+=1
+                sess.run(tf.assign(self.global_step,epoch+1))
+            writer.add_graph(sess.graph)
 
 
     def test(self):
