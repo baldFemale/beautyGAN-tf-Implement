@@ -3,6 +3,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES']='0'
 
 import tensorflow as tf
+import pickle
 import dlib
 import cv2
 import numpy as np
@@ -23,12 +24,13 @@ img_height = 256
 img_width = 256
 img_layer = 3
 
-to_restore = False
+to_restore = True
 save_training_images = False
 to_train = True
 to_test = False
 out_path = "./output"
 check_dir = "./output/checkpoints/"
+load_dir = "imgs.txt"
 
 
 class BeautyGAN():
@@ -44,8 +46,8 @@ class BeautyGAN():
         filename_B = tf.train.match_filenames_once("./all/images/makeup/*.png")
         self.queue_length_B = tf.size(filename_B)
 
-        filename_A_queue = tf.train.string_input_producer(filename_A)
-        filename_B_queue = tf.train.string_input_producer(filename_B)
+        filename_A_queue = tf.train.string_input_producer(filename_A,shuffle=False)
+        filename_B_queue = tf.train.string_input_producer(filename_B,shuffle=False)
 
         image_reader = tf.WholeFileReader()
         _, image_file_A = image_reader.read(filename_A_queue)
@@ -114,32 +116,52 @@ class BeautyGAN():
         self.A_input_mask = np.zeros((max_images,3,img_height,img_width))
         self.B_input_mask = np.zeros((max_images,3,img_height,img_width))
 
-        cur_A = 0
-        for i in range(max_images):
-            image_tensor = sess.run(self.image_A)
-            if image_tensor.size==img_width*img_height*img_layer:
-                temp = ((image_tensor+1)*127.5).astype(np.uint8)
-                res = self.get_mask(temp,self.detector,self.predictor)
-                if res!=None:
-                    self.A_input[cur_A] = image_tensor.reshape((batch_size, img_height, img_width, img_layer))
-                    self.A_input_mask[cur_A][0] = np.equal(res[0],255)
-                    self.A_input_mask[cur_A][1] = np.equal(res[1],255)
-                    self.A_input_mask[cur_A][2] = np.equal(res[2],255)
-                    cur_A+=1
 
-        cur_B = 0
-        for i in range(max_images):
-            image_tensor = sess.run(self.image_B)
-            if image_tensor.size==img_width*img_height*img_layer:
-                self.B_input[i] = image_tensor.reshape((batch_size,img_height,img_width,img_layer))
-                temp = ((image_tensor+1)*127.5).astype(np.uint8)
-                res = self.get_mask(temp, self.detector, self.predictor)
-                if res != None:
-                    self.B_input[cur_B] = image_tensor.reshape((batch_size, img_height, img_width, img_layer))
-                    self.B_input_mask[cur_B][0] = np.equal(res[0],255)
-                    self.B_input_mask[cur_B][1] = np.equal(res[1],255)
-                    self.B_input_mask[cur_B][2] = np.equal(res[2],255)
-                    cur_B += 1
+        if not os.path.exists(load_dir):
+            cur_A = 0
+            for i in range(max_images):
+                image_tensor = sess.run(self.image_A)
+                if image_tensor.size==img_width*img_height*img_layer:
+                    temp = ((image_tensor+1)*127.5).astype(np.uint8)
+                    res = self.get_mask(temp,self.detector,self.predictor)
+                    if res!=None:
+                        self.A_input[cur_A] = image_tensor.reshape((batch_size, img_height, img_width, img_layer))
+                        self.A_input_mask[cur_A][0] = np.equal(res[0],255)
+                        self.A_input_mask[cur_A][1] = np.equal(res[1],255)
+                        self.A_input_mask[cur_A][2] = np.equal(res[2],255)
+                        cur_A+=1
+
+            cur_B = 0
+            for i in range(max_images):
+                image_tensor = sess.run(self.image_B)
+                if image_tensor.size==img_width*img_height*img_layer:
+                    self.B_input[i] = image_tensor.reshape((batch_size,img_height,img_width,img_layer))
+                    temp = ((image_tensor+1)*127.5).astype(np.uint8)
+                    res = self.get_mask(temp, self.detector, self.predictor)
+                    if res != None:
+                        self.B_input[cur_B] = image_tensor.reshape((batch_size, img_height, img_width, img_layer))
+                        self.B_input_mask[cur_B][0] = np.equal(res[0],255)
+                        self.B_input_mask[cur_B][1] = np.equal(res[1],255)
+                        self.B_input_mask[cur_B][2] = np.equal(res[2],255)
+                        cur_B += 1
+
+            os.mknod(load_dir)
+            fw = open(load_dir,"wb")
+            pickle.dump(self.A_input,fw)
+            pickle.dump(self.B_input,fw)
+            pickle.dump(self.A_input_mask,fw)
+            pickle.dump(self.B_input_mask,fw)
+            pickle.dump(cur_A,fw)
+            pickle.dump(cur_B,fw)
+
+        else:
+            fr = open(load_dir,"rb")
+            self.A_input = pickle.load(fr)
+            self.B_input = pickle.load(fr)
+            self.A_input_mask = pickle.load(fr)
+            self.B_input_mask = pickle.load(fr)
+            cur_A = pickle.load(fr)
+            cur_B = pickle.load(fr)
 
         self.train_num = min(cur_A,cur_B)
         print("68 benchmark face number: ",self.train_num)
