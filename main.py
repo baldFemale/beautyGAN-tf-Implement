@@ -222,8 +222,8 @@ class BeautyGAN():
         t_quantiles = tf.divide(t_quantiles, tf.gather(t_quantiles, t_last_element))
 
         nearest_indices = tf.map_fn(lambda x: tf.argmin(tf.abs(tf.subtract(t_quantiles, x))), s_quantiles,
-                                    dtype=tf.int64)
-        s_bin_index = tf.to_int64(tf.divide(source, hist_delta))
+                                    dtype=tf.int32)
+        s_bin_index = tf.to_int32(tf.divide(source, hist_delta))
         s_bin_index = tf.clip_by_value(s_bin_index, 0, 254)
 
         matched_to_t = tf.gather(hist_range, tf.gather(nearest_indices, s_bin_index))
