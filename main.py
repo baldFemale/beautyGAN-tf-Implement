@@ -24,10 +24,10 @@ img_height = 256
 img_width = 256
 img_layer = 3
 
-to_restore = True
+to_restore = False
 save_training_images = False
-to_train = True
-to_test = False
+to_train = False
+to_test = True
 out_path = "./output"
 check_dir = "./output/checkpoints/"
 load_dir = "imgs.txt"
