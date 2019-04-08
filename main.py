@@ -229,8 +229,8 @@ class BeautyGAN():
         #
         #                 scope.reuse_variables()
         #
-        #                 self.fake_pool_rec_A = generate_discriminator(self.fake_pool_A[gpu], "d_A")
-        #                 self.fake_pool_rec_B = generate_discriminator(self.fake_pool_B[gpu], "d_B")
+        #                 self.fake_pool_rec_A = generate_discriminator(self.fake_pool_A, "d_A")
+        #                 self.fake_pool_rec_B = generate_discriminator(self.fake_pool_B, "d_B")
         #
         #                 self.perc_A = tf.cast(tf.image.resize_images((self.input_A_multigpu[gpu] + 1) * 127.5, [224, 224]),
         #                                       tf.float32)
