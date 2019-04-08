@@ -17,6 +17,7 @@ import utils
 
 
 batch_size = 1
+gpu_num = 2
 max_images = 1050
 pool_size = 50
 
@@ -193,7 +194,6 @@ class BeautyGAN():
             self.rec_B = generate_discriminator(self.input_B,"d_B")
 
             scope.reuse_variables()
-
             self.fake_rec_A = generate_discriminator(self.fake_A,"d_A")
             self.fake_rec_B = generate_discriminator(self.fake_B,"d_B")
             self.cyc_A,self.cyc_B = build_generator(self.fake_B,self.fake_A,name="generator")
@@ -262,10 +262,11 @@ class BeautyGAN():
 
 
     def loss_cal(self):
+        # with tf.device("/gpu:0"):
         cyc_loss = tf.reduce_mean(tf.abs(self.input_A-self.cyc_A))+tf.reduce_mean(tf.abs(self.input_B-self.cyc_B))
         disc_loss_A = tf.reduce_mean(tf.squared_difference(self.fake_rec_A,1))
         disc_loss_B = tf.reduce_mean(tf.squared_difference(self.fake_rec_B,1))
-
+        # with tf.device("/gpu:1"):
         histogram_loss_r_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0,:,:,0]+1)*127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0,:,:,0]+1)*127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
@@ -283,7 +284,7 @@ class BeautyGAN():
                                                                dtype=tf.float32), self.input_A_mask[2],
                                                        self.input_B_mask[2])
         histogram_loss_r = histogram_loss_r_face+histogram_loss_r_lip+histogram_loss_r_eye
-
+        # with tf.device("/gpu:0"):
         histogram_loss_g_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 1] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 1] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
@@ -300,6 +301,7 @@ class BeautyGAN():
                                                        self.input_B_mask[2])
         histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_face+histogram_loss_g_eye
 
+        # with tf.device("/gpu:1"):
         histogram_loss_b_lip = self.histogram_loss_cal(tf.cast((self.fake_B[0, :, :, 2] + 1) * 127.5,dtype=tf.float32),
                                                    tf.cast((self.input_B[0, :, :, 2] + 1) * 127.5,
                                                            dtype=tf.float32),self.input_A_mask[0],
@@ -337,8 +339,10 @@ class BeautyGAN():
         d_B_vars = [var for var in self.model_vars if "d_B" in var.name]
         g_vars = [var for var in self.model_vars if "generator" in var.name]
 
+        # with tf.device("/gpu:0"):
         self.d_A_trainer = optimizer.minimize(d_loss_A,var_list=d_A_vars)
         self.d_B_trainer = optimizer.minimize(d_loss_B,var_list=d_B_vars)
+        # with tf.device("/gpu:1"):
         self.g_trainer = optimizer.minimize(g_loss,var_list=g_vars)
 
         for var in self.model_vars:
