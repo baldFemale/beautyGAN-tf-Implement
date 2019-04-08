@@ -214,11 +214,15 @@ class BeautyGAN():
         # d_B_grads = []
         # optimizer = tf.train.AdamOptimizer(self.lr, beta1=0.5)
         # with tf.variable_scope("Model") as scope:
+        #     self.fake_As = []
+        #     self.fake_Bs = []
         #     for gpu in range(gpu_num):
         #         with tf.device("/gpu:%d"%gpu):
         #             with tf.name_scope("tower_%d"%gpu):
         #                 self.fake_B, self.fake_A = build_generator(self.input_A_multigpu[gpu],
         #                                                            self.input_B_multigpu[gpu], name="generator")
+        #                 self.fake_As.append(self.fake_A)
+        #                 self.fake_Bs.append(self.fake_B)
         #                 self.rec_A = generate_discriminator(self.input_A_multigpu[gpu], "d_A")
         #                 self.rec_B = generate_discriminator(self.input_B_multigpu[gpu], "d_B")
         #                 scope.reuse_variables()
@@ -229,8 +233,8 @@ class BeautyGAN():
         #
         #                 scope.reuse_variables()
         #
-        #                 self.fake_pool_rec_A = generate_discriminator(self.fake_pool_A, "d_A")
-        #                 self.fake_pool_rec_B = generate_discriminator(self.fake_pool_B, "d_B")
+        #                 self.fake_pool_rec_A = generate_discriminator(self.fake_pool_A[gpu], "d_A")
+        #                 self.fake_pool_rec_B = generate_discriminator(self.fake_pool_B[gpu], "d_B")
         #
         #                 self.perc_A = tf.cast(tf.image.resize_images((self.input_A_multigpu[gpu] + 1) * 127.5, [224, 224]),
         #                                       tf.float32)
@@ -307,6 +311,20 @@ class BeautyGAN():
         #                 d_A_grads.append(d_A_grad)
         #                 d_B_grad = optimizer.compute_gradients(d_loss_B,var_list=d_B_vars)
         #                 d_B_grads.append(d_B_grad)
+        #
+        #                 self.disc_A_loss_sum = tf.summary.scalar("disc_loss_A",disc_loss_A)
+        #                 self.disc_B_loss_sum = tf.summary.scalar("disc_loss_B",disc_loss_B)
+        #                 self.cyc_loss_sum = tf.summary.scalar("cyc_loss",cyc_loss)
+        #                 self.makeup_loss_sum = tf.summary.scalar("makeup_loss",makeup_loss)
+        #                 self.percep_loss_sum = tf.summary.scalar("perceptual_loss",perceptual_loss)
+        #                 self.g_loss_sum = tf.summary.scalar("g_loss",g_loss)
+        #
+        #                 self.g_summary = tf.summary.merge([
+        #                     self.disc_A_loss_sum,self.disc_B_loss_sum,self.cyc_loss_sum,self.makeup_loss_sum,self.percep_loss_sum,self.g_loss_sum
+        #                 ],"g_summary")
+        #
+        #                 self.d_A_loss_sum = tf.summary.scalar("d_A_loss",d_loss_A)
+        #                 self.d_B_loss_sum = tf.summary.scalar("d_B_loss",d_loss_B)
         # g_grads = self.average_gradients(g_grads)
         # self.g_trainer = optimizer.apply_gradients(g_grads)
         # d_A_grads = self.average_gradients(d_A_grads)
@@ -490,6 +508,77 @@ class BeautyGAN():
                 return temp
             else:
                 return fake
+
+    # def train_multigpu(self):
+    #     self.input_setup()
+    #     self.model_setup()
+    #
+    #     init = [tf.local_variables_initializer(),tf.global_variables_initializer()]
+    #     saver = tf.train.Saver()
+    #
+    #     with tf.Session() as sess:
+    #
+    #         sess.run(init)
+    #         self.input_read(sess)
+    #
+    #         if to_restore:
+    #             chkpt_fname = tf.train.latest_checkpoint(check_dir)
+    #             saver.restore(sess,chkpt_fname)
+    #
+    #         writer = tf.summary.FileWriter("./output/2")
+    #
+    #         if not os.path.exists(check_dir):
+    #             os.makedirs(check_dir)
+    #
+    #         for epoch in range(sess.run(self.global_step),900):
+    #             print("in the epoch ",epoch)
+    #             saver.save(sess,os.path.join(check_dir,"beautyGAN"),global_step=epoch)
+    #
+    #             if epoch<100:
+    #                 curr_lr = 0.0002
+    #             else:
+    #                 curr_lr = 0.0002-0.0002*(epoch-100)/800
+    #
+    #             if save_training_images:
+    #                 self.save_training_images(sess,epoch)
+    #
+    #             for ptr in range(0,self.train_num):
+    #                 print("in the iteration",ptr)
+    #                 print(time.ctime())
+    #                 _,fake_Bs_temp,fake_As_temp,summary_str = sess.run([self.g_trainer,self.fake_Bs,self.fake_As,self.g_summary],feed_dict={
+    #                     self.input_A:self.A_input[ptr:ptr+gpu_num],
+    #                     self.input_B:self.B_input[ptr:ptr+gpu_num],
+    #                     self.lr:curr_lr,
+    #                     self.input_A_mask:self.A_input_mask[ptr:ptr+gpu_num],
+    #                     self.input_B_mask:self.B_input_mask[ptr:ptr+gpu_num],
+    #                 })
+    #                 writer.add_summary(summary_str,epoch*self.train_num+ptr)
+    #
+    #                 fake_A_temp = []
+    #                 fake_B_temp = []
+    #                 for i in range(gpu_num):
+    #                     fake_A_temp.append(self.fake_image_pool(self.num_fake_inputs,fake_As_temp[i],self.fake_images_A))
+    #                     fake_B_temp.append(self.fake_image_pool(self.num_fake_inputs,fake_Bs_temp[i],self.fake_images_B))
+    #
+    #                 _,summary_str = sess.run([self.d_A_trainer,self.d_A_loss_sum],feed_dict={
+    #                     self.input_A:self.A_input[ptr:ptr+gpu_num],
+    #                     self.input_B:self.B_input[ptr:ptr+gpu_num],
+    #                     self.lr:curr_lr,
+    #                     self.fake_pool_A:fake_A_temp
+    #                 })
+    #                 writer.add_summary(summary_str,epoch*self.train_num+ptr)
+    #
+    #                 _,summary_str = sess.run([self.d_B_trainer,self.d_B_loss_sum],feed_dict={
+    #                     self.input_A: self.A_input[ptr:ptr+gpu_num],
+    #                     self.input_B: self.B_input[ptr:ptr+gpu_num],
+    #                     self.lr: curr_lr,
+    #                     self.fake_pool_B: fake_B_temp
+    #                 })
+    #                 writer.add_summary(summary_str,epoch*self.train_num+ptr)
+    #
+    #                 self.num_fake_inputs+=1
+    #             sess.run(tf.assign(self.global_step,epoch+1))
+    #         writer.add_graph(sess.graph)
 
 
     def train(self):
