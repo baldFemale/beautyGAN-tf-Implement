@@ -514,6 +514,7 @@ class BeautyGAN():
             else:
                 return fake
 
+
     def train_multigpu(self):
         self.input_setup()
         self.model_setup()
@@ -582,7 +583,7 @@ class BeautyGAN():
                     })
                     writer.add_summary(summary_str,epoch*self.train_num+ptr)
 
-                    self.num_fake_inputs+=1
+                    self.num_fake_inputs+=gpu_num
                 sess.run(tf.assign(self.global_step,epoch+1))
             writer.add_graph(sess.graph)
 
