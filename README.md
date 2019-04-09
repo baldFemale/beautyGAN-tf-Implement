@@ -5,4 +5,4 @@
 * face parsing tools: [dlib'68 landmarks model](http://dlib.net/files/)
 
 # question
-* results on test paired versus on train paired->stop shuffle the data during the test process
+* face parsing is not precise -> remove face mask/ add total variation loss

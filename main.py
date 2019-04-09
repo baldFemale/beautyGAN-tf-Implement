@@ -368,6 +368,36 @@ class BeautyGAN():
         return vgg.conv4_1
 
 
+    def mrf_loss_cal(self,source, template, ks):
+        temp = tf.extract_image_patches(source, ksizes=[1, ks, ks, 1], strides=[1, 1, 1, 1], rates=[1, 1, 1, 1],
+                                        padding="VALID")
+        temp_shape = temp.get_shape().as_list()
+        source_image_patch = tf.nn.l2_normalize(temp, dim=[3])
+
+        template_image_patch = tf.extract_image_patches(template, ksizes=[1, ks, ks, 1], strides=[1, 1, 1, 1],
+                                                        rates=[1, 1, 1, 1], padding="VALID")
+        template_image_patch = tf.nn.l2_normalize(template_image_patch, dim=[3])
+
+        shape = source_image_patch.get_shape().as_list()
+        height = shape[1]
+        width = shape[2]
+        depth = shape[3]
+
+        source_image_patch = tf.reshape(source_image_patch, [height * width, ks, ks, depth // ks // ks])
+        template_image_patch = tf.reshape(template_image_patch, [height * width, ks, ks, depth // ks // ks])
+        temp_reshape = tf.reshape(temp, [height * width, ks, ks, depth // ks // ks])
+
+        template_image_patch = tf.transpose(template_image_patch, perm=[1, 2, 3, 0])
+        convs = tf.nn.conv2d(source_image_patch, template_image_patch, strides=[1, 1, 1, 1], padding="VALID")
+        argmax = tf.argmax(convs, dimension=3)
+
+        best_match = tf.gather(temp_reshape, indices=argmax)
+        best_match = tf.reshape(best_match, shape=temp_shape)
+
+        loss = tf.divide(tf.reduce_mean(tf.squared_difference(best_match, temp)), ks ** 2)
+        return loss
+
+
     def histogram_loss_cal(self,source,template,source_mask,template_mask):
         shape = tf.shape(source)
         source = tf.reshape(source, [1, -1])
@@ -446,7 +476,9 @@ class BeautyGAN():
         # cycle loss:2
         perceptual_loss = tf.reduce_mean(tf.squared_difference(self.perc[0],self.perc[2]))+tf.reduce_mean(tf.squared_difference(self.perc[1],self.perc[3]))
 
-        g_loss = cyc_loss*10+disc_loss_B+disc_loss_A+perceptual_loss*0.05+makeup_loss
+        tv_loss = tf.image.total_variation(self.fake_B)
+
+        g_loss = cyc_loss*10+disc_loss_B+disc_loss_A+perceptual_loss*0.05+makeup_loss+tv_loss
 
         d_loss_A = (tf.reduce_mean(tf.square(self.fake_pool_rec_A))+tf.reduce_mean(tf.squared_difference(self.rec_A,1)))/2.0
         d_loss_B = (tf.reduce_mean(tf.square(self.fake_pool_rec_B)) + tf.reduce_mean(
@@ -473,9 +505,10 @@ class BeautyGAN():
         self.makeup_loss_sum = tf.summary.scalar("makeup_loss",makeup_loss)
         self.percep_loss_sum = tf.summary.scalar("perceptual_loss",perceptual_loss)
         self.g_loss_sum = tf.summary.scalar("g_loss",g_loss)
+        self.tv_loss_sum = tf.summary.scalar("tv_loss",tv_loss)
 
         self.g_summary = tf.summary.merge([
-            self.disc_A_loss_sum,self.disc_B_loss_sum,self.cyc_loss_sum,self.makeup_loss_sum,self.percep_loss_sum,self.g_loss_sum
+            self.disc_A_loss_sum,self.disc_B_loss_sum,self.cyc_loss_sum,self.makeup_loss_sum,self.percep_loss_sum,self.g_loss_sum,self.tv_loss_sum
         ],"g_summary")
 
         self.d_A_loss_sum = tf.summary.scalar("d_A_loss",d_loss_A)
