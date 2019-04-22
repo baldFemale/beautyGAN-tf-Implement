@@ -29,8 +29,8 @@ img_layer = 3
 
 to_restore = False
 save_training_images = False
-to_train = True
-to_test = False
+to_train = False
+to_test = True
 out_path = "./output"
 check_dir = "./output/checkpoints/"
 load_dir = "imgs.txt"
@@ -450,24 +450,24 @@ class BeautyGAN():
         temp_template = tf.cast((self.input_B[0,:,:,0]+1)*127.5,dtype=tf.float32)
         histogram_loss_r_lip = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[0],self.input_B_mask[0])
         histogram_loss_r_eye = self.histogram_loss_cal(temp_source,temp_template, self.input_A_mask[1],self.input_B_mask[1])
-        histogram_loss_r_face = self.histogram_loss_cal(temp_source,temp_template, self.input_A_mask[2],self.input_B_mask[2])
-        histogram_loss_r = histogram_loss_r_face+histogram_loss_r_lip+histogram_loss_r_eye
+        # histogram_loss_r_face = self.histogram_loss_cal(temp_source,temp_template, self.input_A_mask[2],self.input_B_mask[2])
+        histogram_loss_r = histogram_loss_r_lip+histogram_loss_r_eye
 
 
         temp_source = tf.cast((self.fake_B[0,:,:,1]+1)*127.5,dtype=tf.float32)
         temp_template = tf.cast((self.input_B[0,:,:,1]+1)*127.5,dtype=tf.float32)
         histogram_loss_g_lip = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[0],self.input_B_mask[0])
         histogram_loss_g_eye = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[1],self.input_B_mask[1])
-        histogram_loss_g_face = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[2],self.input_B_mask[2])
-        histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_face+histogram_loss_g_eye
+        # histogram_loss_g_face = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[2],self.input_B_mask[2])
+        histogram_loss_g = histogram_loss_g_lip+histogram_loss_g_eye
 
 
         temp_source = tf.cast((self.fake_B[0,:,:,2]+1)*127.5,dtype=tf.float32)
         temp_template = tf.cast((self.input_B[0,:,:,2]+1)*127.5,dtype=tf.float32)
         histogram_loss_b_lip = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[0],self.input_B_mask[0])
         histogram_loss_b_eye = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[1],self.input_B_mask[1])
-        histogram_loss_b_face = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[2],self.input_B_mask[2])
-        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_face+histogram_loss_b_eye
+        # histogram_loss_b_face = self.histogram_loss_cal(temp_source,temp_template,self.input_A_mask[2],self.input_B_mask[2])
+        histogram_loss_b = histogram_loss_b_lip+histogram_loss_b_eye
 
         makeup_loss = histogram_loss_r+histogram_loss_g+histogram_loss_b
 
@@ -476,9 +476,9 @@ class BeautyGAN():
         # cycle loss:2
         perceptual_loss = tf.reduce_mean(tf.squared_difference(self.perc[0],self.perc[2]))+tf.reduce_mean(tf.squared_difference(self.perc[1],self.perc[3]))
 
-        tv_loss = tf.image.total_variation(self.fake_B)
+        # tv_loss = tf.image.total_variation(self.fake_B)
 
-        g_loss = cyc_loss*10+disc_loss_B+disc_loss_A+perceptual_loss*0.05+makeup_loss+tv_loss
+        g_loss = cyc_loss*20+disc_loss_B+disc_loss_A+perceptual_loss*0.05+makeup_loss*0.5
 
         d_loss_A = (tf.reduce_mean(tf.square(self.fake_pool_rec_A))+tf.reduce_mean(tf.squared_difference(self.rec_A,1)))/2.0
         d_loss_B = (tf.reduce_mean(tf.square(self.fake_pool_rec_B)) + tf.reduce_mean(
@@ -505,10 +505,10 @@ class BeautyGAN():
         self.makeup_loss_sum = tf.summary.scalar("makeup_loss",makeup_loss)
         self.percep_loss_sum = tf.summary.scalar("perceptual_loss",perceptual_loss)
         self.g_loss_sum = tf.summary.scalar("g_loss",g_loss)
-        self.tv_loss_sum = tf.summary.scalar("tv_loss",tv_loss)
+        # self.tv_loss_sum = tf.summary.scalar("tv_loss",tv_loss)
 
         self.g_summary = tf.summary.merge([
-            self.disc_A_loss_sum,self.disc_B_loss_sum,self.cyc_loss_sum,self.makeup_loss_sum,self.percep_loss_sum,self.g_loss_sum,self.tv_loss_sum
+            self.disc_A_loss_sum,self.disc_B_loss_sum,self.cyc_loss_sum,self.makeup_loss_sum,self.percep_loss_sum,self.g_loss_sum,
         ],"g_summary")
 
         self.d_A_loss_sum = tf.summary.scalar("d_A_loss",d_loss_A)
@@ -699,7 +699,9 @@ class BeautyGAN():
         init = [tf.local_variables_initializer(),tf.global_variables_initializer()]
         saver = tf.train.Saver()
 
-        with tf.Session() as sess:
+        config = tf.ConfigProto(allow_soft_placement=True)
+
+        with tf.Session(config=config) as sess:
             sess.run(init)
             self.input_read(sess)
             chkpt_fanem = tf.train.latest_checkpoint(check_dir)
@@ -709,16 +711,25 @@ class BeautyGAN():
                 os.makedirs("./output/imgs/test")
 
             for i in range(self.train_num):
-                fake_A_temp,fake_B_temp = sess.run([self.fake_A,self.fake_B],feed_dict={
-                    self.input_A:self.A_input[i],
-                    self.input_B:self.B_input[i]
+                # for multi gpu
+                fake_A_temp,fake_B_temp = sess.run([self.fake_As,self.fake_Bs],feed_dict={
+                        self.input_A_multigpu:np.squeeze(self.A_input[i:i+gpu_num]),
+                        self.input_B_multigpu:np.squeeze(self.B_input[i:i+gpu_num]),
                 })
-                imsave("./output/imgs/test/A_" + str(i) + ".jpg",((self.A_input[i][0]+1)*127.5).astype(np.uint8))
-                imsave("./output/imgs/test/B_" + str(i) + ".jpg",((self.B_input[i][0]+1)*127.5).astype(np.uint8))
                 imsave("./output/imgs/test/fakeA_" + str(i) + ".jpg",
-                       ((fake_A_temp[0] + 1) * 127.5).astype(np.uint8))
+                       ((fake_A_temp[0][0] + 1) * 127.5).astype(np.uint8))
                 imsave("./output/imgs/test/fakeB_" + str(i) + ".jpg",
-                       ((fake_B_temp[0] + 1) * 127.5).astype(np.uint8))
+                       ((fake_B_temp[0][0] + 1) * 127.5).astype(np.uint8))
+                # for single gpu
+                # fake_A_temp,fake_B_temp = sess.run([self.fake_A,self.fake_B],feed_dict={
+                #     self.input_A:self.A_input[i],
+                #     self.input_B:self.B_input[i]
+                # })
+                # imsave("./output/imgs/test/fakeA_" + str(i) + ".jpg",
+                #        ((fake_A_temp[0] + 1) * 127.5).astype(np.uint8))
+                # imsave("./output/imgs/test/fakeB_" + str(i) + ".jpg",
+                #        ((fake_B_temp[0] + 1) * 127.5).astype(np.uint8))
+
 
 def main():
     model = BeautyGAN()
