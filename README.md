@@ -10,3 +10,6 @@
 # attention
 * in order to speed up the training process, we fix the (content,style) pair. remove this constraint should improve the model's performance on validation data and test data.
 * we simply apply the face parser in opencv, the original paper use different face parsing tool.
+
+# some results
+![avatar](/results/results.png)
