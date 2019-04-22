@@ -12,4 +12,4 @@
 * we simply apply the face parser in opencv, the original paper use different face parsing tool.
 
 # some results
-![avatar](/results/results.png)
+![image](https://github.com/baldFemale/beautyGAN-tf-Implement/results/results.png)
